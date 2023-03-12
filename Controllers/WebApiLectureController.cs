@@ -9,7 +9,14 @@ namespace BasicsOfWebApi.Controllers
     [Route("[controller]")]
     public class WebApiLectureController : ControllerBase
     {
-        private readonly List<OrangeJuice> _orangeJuices;
+        private static List<Book> Books = new List<Book>
+            {
+                new Book {Id = 1, Name = "48 rules of power", Author = new Author { Id = 10 ,Name = "Omar", Age = 26} },
+                new Book {Id = 2, Name = "Calculas", Author = new Author { Id =  11,Name = "Mohammad", Age = 36} },
+                new Book {Id = 3, Name = "physics", Author = new Author { Id = 12 ,Name = "Ahmad", Age = 46} },
+                new Book {Id = 4, Name = "Maths", Author = new Author { Id = 13 ,Name = "Moath", Age = 56} },
+                new Book {Id = 5, Name = "Arabic", Author = new Author { Id = 14, Name = "Laith", Age = 66 }}
+            };
 
         private readonly ILogger<WebApiLectureController> _logger;
 
@@ -20,42 +27,117 @@ namespace BasicsOfWebApi.Controllers
         {
             _logger = logger;
             _contextAccessor = httpContextAccessor;
-            _orangeJuices = new List<OrangeJuice>
+        }
+
+        [HttpGet("GetAll")]
+        public IEnumerable<Book> GetAll()
+        {
+            return Books;
+        }
+
+        [HttpGet("GetById")]
+        public Book GetBook(int id)
+        {
+            var book = Books.SingleOrDefault(a => a.Id == id);
+
+            if(book == null) 
             {
-                new OrangeJuice {Name = "ahmad", Description = "desc 1", Quantity = 2},
-                new OrangeJuice {Name = "bahaa", Description = "desc 2", Quantity = 4},
-                new OrangeJuice {Name = "sameer", Description = "desc 3", Quantity = 26},
-                new OrangeJuice {Name = "abdullah", Description = "desc 4", Quantity = 54},
-                new OrangeJuice {Name = "laith", Description = "desc 5", Quantity = 7}
-            };
+                throw new NullReferenceException(string.Format("Did not find Book Entity With Id : {0}", id));
+            }
+
+            return book ?? throw new NullReferenceException(string.Format("Did not find Book Entity With Id : {0}", id));
         }
 
-        [HttpGet]
-        public JsonResult Get(string name, int quantity)
+        [HttpPost("Create")]
+        public Book PostForAmadAlMasri([FromBody] Book newBook)
         {
-            var httpcontext = _contextAccessor.HttpContext;
+            // if the id is not 0 then its already a book entity and thus cannot be created
+            if(newBook.Id > 0)
+            {
+                throw new Exception("Cannot Create An Entity with Id Larger Than Zero!!!");
+            }
 
-            var httpRequest = httpcontext?.Request;
+            var maximumIdInBooksList = Books.Max(a => a.Id);
 
-            var httpResponse = httpcontext?.Response;
+            newBook.Id = maximumIdInBooksList + 1;
 
-            return new JsonResult(_orangeJuices.Where(a => a.Name.Contains(name) && a.Quantity > quantity).ToList());
+            Books.Add(newBook);
+
+            return newBook;
         }
 
-        [HttpPost]
-        public string Post([FromBody] OrangeJuice inputDto)
+        [HttpPut("Update")]
+        public Book UpdateBook(Book updatedBook)
         {
-            return inputDto.Name;
+            // if the id is greater 1 then continue after the if
+            if (updatedBook.Id < 1)
+            {
+                throw new Exception("Cannot Update An Entity with Id Less Than Zero!!!");
+            }
+
+            var ExistingBook = Books.SingleOrDefault(a => a.Id == updatedBook.Id);
+
+            if (ExistingBook == null)
+            {
+                throw new NullReferenceException(string.Format("Did not find Book Entity With Id : {0}", updatedBook.Id));
+            }
+
+            var indexOfBook = Books.IndexOf(ExistingBook);
+
+            Books[indexOfBook] = updatedBook;
+
+            return updatedBook;
         }
 
+        [HttpDelete("Delete")]
+        public Book DeleteBook(int id)
+        {
+            var bookToDelete = Books.SingleOrDefault(a => a.Id == id);
+
+            // if did not find the book with the id, in the list
+            if (bookToDelete == null)
+            {
+                throw new NullReferenceException(string.Format("Did not find Book Entity With Id : {0}", id));
+            }
+
+            bookToDelete.IsDeleted = true;
+
+            //Books.Remove(bookToDelete);
+
+            return bookToDelete;
+        }
 
     }
-
-
-    public class OrangeJuice
+    public class Book : IAuditData
     {
+        public Book()
+        {
+            CreationTime = DateTime.UtcNow;
+        }
+        public int Id { get; set; }
         public string Name { get; set; }
-        public string Description { get; set; }
-        public int Quantity { get; set; }
+        public DateTime AuthoringTime { get; set; }
+
+        public Author Author { get; set; }
+
+        public DateTime CreationTime { get; set; }
+        public DateTime LastModificationTime { get; set; }
+        public int UserId { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
+    public class Author
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public int Age { get; set; }
+    }
+
+    public interface IAuditData
+    {
+        public DateTime CreationTime { get; set; }
+        public DateTime LastModificationTime { get; set; }
+        public int UserId { get; set; }
+        public bool IsDeleted { get; set; }
     }
 }
