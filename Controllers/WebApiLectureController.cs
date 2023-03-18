@@ -1,9 +1,12 @@
 using BasicsOfWebApi.Controllers.Dtos;
 using BasicsOfWebApi.Entities;
+using DataAnnotationsExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Security.Claims;
 
-// Model Binding, Validations, Headers, filters, middlewares, Cookies, 
+// Model Binding, Validations, Headers, filters, middlewares, Cookies
 
 namespace BasicsOfWebApi.Controllers
 {
@@ -26,7 +29,8 @@ namespace BasicsOfWebApi.Controllers
                 new Author { Id =  11,Name = "Mohammad", Age = 36},
                 new Author { Id = 12 ,Name = "Ahmad", Age = 46},
                 new Author { Id = 13 ,Name = "Moath", Age = 56},
-                new Author { Id = 14, Name = "Laith", Age = 66 }
+                new Author { Id = 14, Name = "Laith", Age = 66 },
+                new Author { Id = 15, Name = "saeed", Age = 66 }
             };
 
         private readonly ILogger<WebApiLectureController> _logger;
@@ -49,7 +53,12 @@ namespace BasicsOfWebApi.Controllers
         [HttpGet("GetById")]
         public Book GetBook(int id)
         {
+            var httpContext = _contextAccessor.HttpContext;
+
+            httpContext.Request.Headers.TryGetValue("X-LANGUAGE", out var token);            
+
             var book = Books.SingleOrDefault(a => a.Id == id);
+            httpContext.Response.Headers.Add("ahmad", "sa3eed");
 
             if(book == null) 
             {
@@ -73,12 +82,17 @@ namespace BasicsOfWebApi.Controllers
                 Id = maximumIdInBooksList + 1,
                 Name = newBook.Name,
                 Description = newBook.Description,
-                Author = Authors.SingleOrDefault(a => a.Id == newBook.AuthorId)
+                Author = Authors.FirstOrDefault(a => CheckIfAuthorId(a , newBook.AuthorId))
             };
 
             Books.Add(addedBook);
 
             return new BookDto { Name = addedBook.Name, Description = addedBook.Description ,AuthorName = addedBook.Author.Name};
+        }
+
+        private bool CheckIfAuthorId(Author author, int id)
+        {
+            return author.Id == id;
         }
 
         [HttpPut("Update")]
